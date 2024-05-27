@@ -1,13 +1,11 @@
 use std::{
-    collections::HashMap,
     fs::File,
-    io::{BufRead, BufReader, Read, Write},
+    io::{BufRead, BufReader, Write},
     slice::Chunks,
 };
 
-const BUFSIZE: usize = (1 << 20) * 32;
+use rustc_hash::FxHashMap;
 
-#[derive(Default)]
 struct Station {
     total: i32,
     sum: f64,
@@ -15,30 +13,44 @@ struct Station {
     min: f64,
 }
 
-pub struct Chunked;
+impl Default for Station {
+    fn default() -> Self {
+        Self {
+            total: 0,
+            sum: 0.0,
+            max: f64::NEG_INFINITY,
+            min: f64::INFINITY,
+        }
+    }
 
-impl Chunked {
+}
+
+
+
+pub struct BetterHash;
+
+impl BetterHash {
     pub fn start(path: &'static str) {
         let file = File::open(path).unwrap();
 
         let chunk_size = 4096;
+        let mut reader = BufReader::new(file);
 
-        let mut results: HashMap<String , Station> = HashMap::new();
+        let mut results: FxHashMap<String, Station> = FxHashMap::default();
 
-        let mut buffer = [0; BUFSIZE];
+        let mut buffer = String::new();
 
         loop {
-            // let len = file.read(&mut buffer).unwrap();
-            // if len == 0 {
-            //     break;
-            // }
-            //
-            // let line = get_parts(&buffer);
-            // results
-            //     .entry(line[0].to_string())
-            //     .and_modify(|station| update_station(station, line[1].trim()))
-            //     .or_insert(Station::default());
-            
+            let len = reader.read_line(&mut buffer).unwrap();
+            if len == 0 {
+                break;
+            }
+            let line = get_parts(&buffer);
+            results
+                .entry(line[0].to_string())
+                .and_modify(|station| update_station(station, line[1].trim()))
+                .or_insert(Station::default());
+            buffer.clear();
         }
 
         for (key, value) in results {
@@ -51,10 +63,6 @@ impl Chunked {
             );
         }
     }
-}
-
-fn parse_buffer(buffer: &[u8; BUFSIZE], map: &HashMap<String, Station>) -> [u8; 100] {
-    todo!()
 }
 
 fn update_station(station: &mut Station, data: &str) {
@@ -76,6 +84,6 @@ mod tests {
 
     #[test]
     fn it_works() {
-        Chunked::start("measurements.txt");
+        BetterHash::start("measurements.txt");
     }
 }
